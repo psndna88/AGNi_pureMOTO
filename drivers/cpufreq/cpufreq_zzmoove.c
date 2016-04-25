@@ -94,20 +94,22 @@
 #endif
 
 // ZZ: enable/disable hotplug support
+// ZZ: enable support for native hotplugging on snapdragon platform
+// adapt osprey/merlin/lux for zzmoove's hotpluging capability - psndna88@xda
 #if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_OSPREY_DTB)
 #define ENABLE_HOTPLUGGING
+//#define SNAP_NATIVE_HOTPLUGGING
 #else
 #if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_MERLIN_DTB)
-#define ENABLE_HOTPLUGGING
+//#define ENABLE_HOTPLUGGING
+#define SNAP_NATIVE_HOTPLUGGING
 #else
 #if defined(CONFIG_ARCH_MSM8939) && defined(CONFIG_MMI_LUX_DTB)
-#define ENABLE_HOTPLUGGING
+//#define ENABLE_HOTPLUGGING
+#define SNAP_NATIVE_HOTPLUGGING
 #endif
 #endif
 #endif
-
-// ZZ: enable support for native hotplugging on snapdragon platform
-// #define SNAP_NATIVE_HOTPLUGGING
 
 // ZZ: enable for sources with backported cpufreq implementation of 3.10 kernel
 // #define CPU_IDLE_TIME_IN_CPUFREQ
@@ -124,7 +126,13 @@
 // ZZ: include profiles header file and set name for 'custom' profile (informational for a changed profile value)
 #ifdef ENABLE_PROFILES_SUPPORT
 #include "cpufreq_zzmoove_profiles.h"
-#define DEF_PROFILE_NUMBER				(0)	// ZZ: default profile number (profile = 0 = 'none' = tuneable mode)
+// ZZ: default profile number
+// set a zzmoove profile for clustered octacore devices with cluster plug - psndna88@xda
+#if defined(CONFIG_CLUSTER_PLUG) && (defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB))
+#define DEF_PROFILE_NUMBER				(6)     //'zzopt'  -> ZaneZam Optimized    -> balanced setting
+#else
+#define DEF_PROFILE_NUMBER				(0)		// zzmoove in tuneable mode
+#endif
 static char custom_profile[20] = "custom";			// ZZ: name to show in sysfs if any profile value has changed
 
 // ff: allows tuneables to be tweaked without reverting to "custom" profile
