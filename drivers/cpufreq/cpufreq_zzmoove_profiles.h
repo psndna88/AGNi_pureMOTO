@@ -47,7 +47,19 @@
 static char profiles_file_version[20] = "0.3 beta8 SNAP";
 #define PROFILE_TABLE_END ~1
 #define END_OF_PROFILES "end"
-#define PROFILE_MAX_FREQ (2457600)	// ZZ: max possible freq in system table for freq adaption (possible OC frequencies inclusive)
+// define PROFILE_MAX_FREQ ZZ: max possible freq in system table for freq adaption (possible OC frequencies inclusive)
+// MSM8916 & MSM8939 adaptation - psndna88@xda
+#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_OSPREY_DTB)
+#define PROFILE_MAX_FREQ (1363200)
+#else
+#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_MERLIN_DTB)
+#define PROFILE_MAX_FREQ (1459200)
+#else
+#if defined(CONFIG_ARCH_MSM8939) && defined(CONFIG_MMI_LUX_DTB)
+#define PROFILE_MAX_FREQ (1651200)
+#endif
+#endif
+#endif
 
 struct zzmoove_profile {
 	unsigned int profile_number;

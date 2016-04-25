@@ -78,10 +78,33 @@
 #define ZZMOOVE_VERSION "1.0 beta8"
 
 // ZZ: support for 2,4,6 or 8 cores (this will enable/disable hotplug threshold tuneables and limit hotplug max limit tuneable)
+// Defining max 4 cores for osprey; merlin & lux have 8 cores -psndna88@xda
+#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_OSPREY_DTB)
 #define MAX_CORES					(4)
+#else
+#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_MERLIN_DTB)
+#define MAX_CORES					(8)
+#else
+#if defined(CONFIG_ARCH_MSM8939) && defined(CONFIG_MMI_LUX_DTB)
+#define MAX_CORES					(8)
+#else
+#define MAX_CORES					(2)
+#endif
+#endif
+#endif
 
 // ZZ: enable/disable hotplug support
-// #define ENABLE_HOTPLUGGING
+#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_OSPREY_DTB)
+#define ENABLE_HOTPLUGGING
+#else
+#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_MERLIN_DTB)
+#define ENABLE_HOTPLUGGING
+#else
+#if defined(CONFIG_ARCH_MSM8939) && defined(CONFIG_MMI_LUX_DTB)
+#define ENABLE_HOTPLUGGING
+#endif
+#endif
+#endif
 
 // ZZ: enable support for native hotplugging on snapdragon platform
 // #define SNAP_NATIVE_HOTPLUGGING
