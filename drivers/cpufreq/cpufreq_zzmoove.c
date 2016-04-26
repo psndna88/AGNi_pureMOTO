@@ -97,7 +97,7 @@
 // ZZ: enable support for native hotplugging on snapdragon platform
 // adapt osprey/merlin/lux for zzmoove's hotpluging capability - psndna88@xda
 #if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_OSPREY_DTB)
-#define ENABLE_HOTPLUGGING
+//#define ENABLE_HOTPLUGGING
 //#define SNAP_NATIVE_HOTPLUGGING
 #else
 #if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_MERLIN_DTB)
@@ -131,7 +131,12 @@
 #if defined(CONFIG_CLUSTER_PLUG) && (defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB))
 #define DEF_PROFILE_NUMBER				(6)     //'zzopt'  -> ZaneZam Optimized    -> balanced setting
 #else
+#ifdef CONFIG_MMI_OSPREY_DTB
+#define DEF_PROFILE_NUMBER				(2)
+// (2)'ybat    -> Yank Battery a very good battery/performance balanced setting
+#else
 #define DEF_PROFILE_NUMBER				(0)		// zzmoove in tuneable mode
+#endif
 #endif
 static char custom_profile[20] = "custom";			// ZZ: name to show in sysfs if any profile value has changed
 
