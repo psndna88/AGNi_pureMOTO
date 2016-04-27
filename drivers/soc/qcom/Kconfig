@@ -584,6 +584,9 @@ config MSM_PERFORMANCE_HOTPLUG_ON
           msm_performance.
 
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+
 source "drivers/soc/qcom/memshare/Kconfig"
 
 config BOOTINFO
