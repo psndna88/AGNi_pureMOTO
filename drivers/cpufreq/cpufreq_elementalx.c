@@ -20,9 +20,17 @@
 #define DEF_FREQUENCY_UP_THRESHOLD		(90)
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(20)
 #define DEF_ACTIVE_FLOOR_FREQ			(800000)
-#define DEF_GBOOST_MIN_FREQ			(998400)
+#if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
+#define DEF_GBOOST_MIN_FREQ			(1113600)
+#else
+#define DEF_GBOOST_MIN_FREQ			(1152000)
+#endif
+#if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
+#define DEF_MAX_SCREEN_OFF_FREQ			(1113600)
+#else
 #define DEF_MAX_SCREEN_OFF_FREQ			(1094400)
-#define MIN_SAMPLING_RATE			(10000)
+#endif
+#define MIN_SAMPLING_RATE			(40000)
 #define DEF_SAMPLING_DOWN_FACTOR		(8)
 #define MAX_SAMPLING_DOWN_FACTOR		(20)
 #define FREQ_NEED_BURST(x)			(x < 600000 ? 1 : 0)
@@ -153,8 +161,6 @@ static void ex_check_cpu(int cpu, unsigned int load)
 	struct ex_dbs_tuners *ex_tuners = dbs_data->tuners;
 	unsigned int max_load_freq = 0, freq_next = 0;
 	unsigned int j, avg_load, cur_freq, max_freq, target_freq = 0;
-
-	cpufreq_notify_utilization(policy, load);
 
 	cur_freq = policy->cur;
 	max_freq = policy->max;
@@ -511,7 +517,7 @@ static int ex_init(struct dbs_data *dbs_data)
 	tuners->up_threshold = DEF_FREQUENCY_UP_THRESHOLD;
 	tuners->down_differential = DEF_FREQUENCY_DOWN_DIFFERENTIAL;
 	tuners->ignore_nice_load = 0;
-	tuners->gboost = 1;
+	tuners->gboost = 0;
 	tuners->gboost_min_freq = DEF_GBOOST_MIN_FREQ;
 	tuners->active_floor_freq = DEF_ACTIVE_FLOOR_FREQ;
 	tuners->max_screen_off_freq = DEF_MAX_SCREEN_OFF_FREQ;
