@@ -78,38 +78,16 @@
 #define ZZMOOVE_VERSION "1.0 beta8"
 
 // ZZ: support for 2,4,6 or 8 cores (this will enable/disable hotplug threshold tuneables and limit hotplug max limit tuneable)
-// Defining max 4 cores for osprey; merlin & lux have 8 cores -psndna88@xda
-#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_OSPREY_DTB)
+// osprey has 4 cores.
+// merlin/lux have 8 cores but each cluster can be governed independently
+// psndna88@xda
 #define MAX_CORES					(4)
-#else
-#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_MERLIN_DTB)
-#define MAX_CORES					(8)
-#else
-#if defined(CONFIG_ARCH_MSM8939) && defined(CONFIG_MMI_LUX_DTB)
-#define MAX_CORES					(8)
-#else
-#define MAX_CORES					(2)
-#endif
-#endif
-#endif
 
 // ZZ: enable/disable hotplug support
+//#define ENABLE_HOTPLUGGING
+
 // ZZ: enable support for native hotplugging on snapdragon platform
-// adapt osprey/merlin/lux for zzmoove's hotpluging capability - psndna88@xda
-#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_OSPREY_DTB)
-//#define ENABLE_HOTPLUGGING
 //#define SNAP_NATIVE_HOTPLUGGING
-#else
-#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_MMI_MERLIN_DTB)
-//#define ENABLE_HOTPLUGGING
-#define SNAP_NATIVE_HOTPLUGGING
-#else
-#if defined(CONFIG_ARCH_MSM8939) && defined(CONFIG_MMI_LUX_DTB)
-//#define ENABLE_HOTPLUGGING
-#define SNAP_NATIVE_HOTPLUGGING
-#endif
-#endif
-#endif
 
 // ZZ: enable for sources with backported cpufreq implementation of 3.10 kernel
 // #define CPU_IDLE_TIME_IN_CPUFREQ
@@ -127,9 +105,10 @@
 #ifdef ENABLE_PROFILES_SUPPORT
 #include "cpufreq_zzmoove_profiles.h"
 // ZZ: default profile number
-// set a zzmoove profile for clustered octacore devices with cluster plug - psndna88@xda
-#if defined(CONFIG_CLUSTER_PLUG) && (defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB))
-#define DEF_PROFILE_NUMBER				(6)     //'zzopt'  -> ZaneZam Optimized    -> balanced setting
+// set a zzmoove profile for clustered octacore devices - psndna88@xda
+#if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
+#define DEF_PROFILE_NUMBER				(8)
+// (8)'zzperf' -> ZaneZam Performance  -> all you can get from zzmoove in terms of performance but still has the fast down scaling/hotplugging
 #else
 #ifdef CONFIG_MMI_OSPREY_DTB
 #define DEF_PROFILE_NUMBER				(2)
