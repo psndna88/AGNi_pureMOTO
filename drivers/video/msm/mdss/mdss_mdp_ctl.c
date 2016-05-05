@@ -530,7 +530,7 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 	 * no need to account for these lines in MDP clock or request bus
 	 * bandwidth to fetch them.
 	 */
-	src_h = src.h >> pipe->vert_deci;
+	src_h = DECIMATED_DIMENSION(src.h, pipe->vert_deci);
 
 	quota = fps * src.w * src_h;
 
@@ -684,13 +684,19 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		perf->mdp_clk_rate =
 			mdss_mdp_clk_fudge_factor(mixer, perf->mdp_clk_rate);
 
-		if (!pinfo)	/* perf for bus writeback */
+		if (!pinfo) {	/* perf for bus writeback */
 			perf->bw_overlap =
 				fps * mixer->width * mixer->height * 3;
-		/* for command mode, run as fast as the link allows us */
-		else if ((pinfo->type == MIPI_CMD_PANEL) &&
-			 (pinfo->mipi.dsi_pclk_rate > perf->mdp_clk_rate))
-			perf->mdp_clk_rate = pinfo->mipi.dsi_pclk_rate;
+		} else if (pinfo->type == MIPI_CMD_PANEL) {
+			u32 dsi_transfer_rate = mixer->width * v_total;
+
+			/* adjust transfer time from micro seconds */
+			dsi_transfer_rate = mult_frac(dsi_transfer_rate,
+				1000000, pinfo->mdp_transfer_time_us);
+
+			if (dsi_transfer_rate > perf->mdp_clk_rate)
+				perf->mdp_clk_rate = dsi_transfer_rate;
+		}
 	}
 
 	/*
@@ -923,7 +929,8 @@ int mdss_mdp_perf_bw_check(struct mdss_mdp_ctl *ctl,
 {
 	struct mdss_data_type *mdata = ctl->mdata;
 	struct mdss_mdp_perf_params perf;
-	u32 bw, threshold;
+	u32 bw, threshold, i;
+	u64 bw_sum_of_intfs = 0;
 
 	/* we only need bandwidth check on real-time clients (interfaces) */
 	if (ctl->intf_type == MDSS_MDP_NO_INTF)
@@ -932,9 +939,18 @@ int mdss_mdp_perf_bw_check(struct mdss_mdp_ctl *ctl,
 	__mdss_mdp_perf_calc_ctl_helper(ctl, &perf,
 			left_plist, left_cnt, right_plist, right_cnt,
 			PERF_CALC_PIPE_CALC_SMP_SIZE);
+	ctl->bw_pending = perf.bw_ctl;
+
+	for (i = 0; i < mdata->nctl; i++) {
+		struct mdss_mdp_ctl *temp = mdata->ctl_off + i;
+		if (temp->power_state == MDSS_PANEL_POWER_ON) {
+			bw_sum_of_intfs += temp->bw_pending;
+			temp->bw_pending = 0;
+		}
+	}
 
 	/* convert bandwidth to kb */
-	bw = DIV_ROUND_UP_ULL(perf.bw_ctl, 1000);
+	bw = DIV_ROUND_UP_ULL(bw_sum_of_intfs, 1000);
 	pr_debug("calculated bandwidth=%uk\n", bw);
 
 	threshold = ctl->is_video_mode ? mdata->max_bw_low : mdata->max_bw_high;
@@ -3453,8 +3469,8 @@ int mdss_mdp_get_ctl_mixers(u32 fb_num, u32 *mixer_id)
 	mdata = mdss_mdp_get_mdata();
 	for (i = 0; i < mdata->nctl; i++) {
 		ctl = mdata->ctl_off + i;
-		if ((mdss_mdp_ctl_is_power_on(ctl)) && (ctl->mfd) &&
-			(ctl->mfd->index == fb_num)) {
+		if ((mdss_mdp_ctl_is_power_on(ctl) || mdata->handoff_pending) &&
+				(ctl->mfd) && (ctl->mfd->index == fb_num)) {
 			if (ctl->mixer_left) {
 				mixer_id[mixer_cnt] = ctl->mixer_left->num;
 				mixer_cnt++;

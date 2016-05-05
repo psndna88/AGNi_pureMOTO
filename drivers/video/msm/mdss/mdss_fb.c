@@ -237,6 +237,11 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 	int bl_lvl;
 
+	if (mfd->boot_notification_led) {
+		led_trigger_event(mfd->boot_notification_led, 0);
+		mfd->boot_notification_led = NULL;
+	}
+
 	if (value > mfd->panel_info->brightness_max)
 		value = mfd->panel_info->brightness_max;
 
@@ -357,7 +362,7 @@ static void mdss_fb_parse_dt_split(struct msm_fb_data_type *mfd)
 static ssize_t mdss_fb_store_split(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
-	u32 data[2] = {0};
+	int data[2] = {0};
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
 
@@ -878,6 +883,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd = NULL;
 	struct mdss_panel_data *pdata;
 	struct fb_info *fbi;
+	const char *data;
 	int rc;
 	u32 cell_index = 0;
 
@@ -918,6 +924,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->bl_min_lvl = 30;
 	mfd->ad_bl_level = 0;
 	mfd->fb_imgType = MDP_RGBA_8888;
+	mfd->calib_mode_bl = 0;
 
 	if (mfd->panel_info->cont_splash_enabled) {
 		mfd->bl_updated = true;
@@ -931,11 +938,34 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			mdss_fb_scale_bl(mfd, &mfd->bl_level_scaled);
 	}
 
+	if (mfd->panel.type == MIPI_VIDEO_PANEL ||
+				mfd->panel.type == MIPI_CMD_PANEL) {
+		rc = of_property_read_string(pdev->dev.of_node,
+				"qcom,mdss-fb-format", &data);
+		if (!rc) {
+			if (!strcmp(data, "rgb888"))
+				mfd->fb_imgType = MDP_RGB_888;
+			else if (!strcmp(data, "rgb565"))
+				mfd->fb_imgType = MDP_RGB_565;
+			else
+				mfd->fb_imgType = MDP_RGBA_8888;
+		}
+	}
+
 	mfd->pdev = pdev;
 	mfd->split_mode = MDP_SPLIT_MODE_NONE;
 	if (pdata->next)
 		mfd->split_mode = MDP_SPLIT_MODE_LM;
 	mfd->mdp = *mdp_instance;
+
+	rc = of_property_read_bool(pdev->dev.of_node,
+		"qcom,boot-indication-enabled");
+
+	if (rc) {
+		led_trigger_register_simple("boot-indication",
+			&(mfd->boot_notification_led));
+	}
+
 	INIT_LIST_HEAD(&mfd->proc_list);
 
 	mutex_init(&mfd->bl_lock);
@@ -1273,8 +1303,8 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		return;
 	}
 
-	if (((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
-		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd) &&
+	if ((((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
+		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) ||
 		mfd->panel_info->cont_splash_enabled) {
 		mfd->unset_bl_level = bkl_lvl;
 		return;
@@ -1330,6 +1360,8 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 			if (mfd->mdp.ad_calc_bl)
 				(*mfd->mdp.ad_calc_bl)(mfd, temp, &temp,
 								&bl_notify);
+			if (!IS_CALIB_MODE_BL(mfd))
+				mdss_fb_scale_bl(mfd, &temp);
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level_scaled = mfd->unset_bl_level;
 			mfd->bl_updated = 1;
@@ -1473,6 +1505,18 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	default:
 		pr_debug("blank powerdown called. cur mode=%d, req mode=%d\n",
 			cur_power_state, req_power_state);
+		/*
+		 * If doze mode is requested when panel is already off,
+		 * then first unblank the panel before entering doze mode
+		 */
+		if ((MDSS_PANEL_POWER_DOZE == req_power_state) &&
+			mdss_fb_is_power_off(mfd) && mfd->mdp.on_fnc) {
+			pr_debug("off --> doze. switch to on first\n");
+			ret = mfd->mdp.on_fnc(mfd);
+			if (ret == 0)
+				mfd->panel_power_state = MDSS_PANEL_POWER_ON;
+		}
+
 		if (mdss_fb_is_power_on(mfd) && mfd->mdp.off_fnc) {
 			int bl_level_old;
 			cur_power_state = mfd->panel_power_state;
@@ -1487,7 +1531,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			complete(&mfd->no_update.comp);
 
 			mfd->op_enable = false;
-			mutex_lock(&mfd->bl_lock);
 			if (mdss_panel_is_power_off(req_power_state)) {
 				/* Stop Display thread */
 				if (mfd->disp_thread)
@@ -1497,9 +1540,12 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 					bl_level_old = mfd->bl_level;
 				else
 					bl_level_old = mfd->unset_bl_level;
+
+				mutex_lock(&mfd->bl_lock);
 				mdss_fb_set_backlight(mfd, 0);
 				mfd->unset_bl_level = bl_level_old;
 				mfd->bl_updated = 0;
+				mutex_unlock(&mfd->bl_lock);
 
 				if (mfd->shutdown_pending &&
 					mfd->panel_info->bl_shutdown_delay)
@@ -1510,7 +1556,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 					* 1000);
 			}
 			mfd->panel_power_state = req_power_state;
-			mutex_unlock(&mfd->bl_lock);
 
 			ret = mfd->mdp.off_fnc(mfd);
 			if (ret)
@@ -1638,6 +1683,7 @@ int mdss_fb_alloc_fb_ion_memory(struct msm_fb_data_type *mfd, size_t fb_size)
 		}
 	} else {
 		pr_err("No IOMMU Domain\n");
+		rc = -EINVAL;
 		goto fb_mmap_failed;
 	}
 
@@ -2319,11 +2365,10 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct mdss_fb_proc_info *pinfo = NULL, *temp_pinfo = NULL;
 	struct mdss_fb_proc_info *proc_info = NULL;
-	int blank, ret = 0;
+	int ret = 0, ad_ret = 0;
 	int pid = current->tgid;
 	bool unknown_pid = true, release_needed = false;
 	struct task_struct *task = current->group_leader;
-	struct fb_event event;
 
 	if (!mfd->ref_cnt) {
 		pr_info("try to close unopened fb %d! from %s\n", mfd->index,
@@ -2408,24 +2453,23 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 		if (mfd->mdp.release_fnc)
 			mfd->mdp.release_fnc(mfd, true, pid);
 
-		if (mfd->fb_ion_handle)
-			mdss_fb_free_fb_ion_memory(mfd);
-
-		blank = FB_BLANK_POWERDOWN;
-		event.info = info;
-		event.data = &blank;
-
-		fb_notifier_call_chain(FB_EARLY_EVENT_BLANK, &event);
+		if (mfd->mdp.ad_shutdown_cleanup) {
+			ad_ret = (*mfd->mdp.ad_shutdown_cleanup)(mfd);
+			if (ad_ret)
+				pr_err("AD shutdown cleanup failed ret = %d\n",
+									ad_ret);
+		}
 
 		ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info,
 			mfd->op_enable);
 		if (ret) {
-			fb_notifier_call_chain(FB_R_EARLY_EVENT_BLANK, &event);
 			pr_err("can't turn off fb%d! rc=%d current process=%s pid=%d known pid=%d\n",
 			      mfd->index, ret, task->comm, current->tgid, pid);
 			return ret;
-		} else
-			fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+		}
+
+		if (mfd->fb_ion_handle)
+			mdss_fb_free_fb_ion_memory(mfd);
 
 		atomic_set(&mfd->ioctl_ref_cnt, 0);
 	} else if (release_needed) {
@@ -3643,6 +3687,17 @@ int mdss_fb_get_phys_info(dma_addr_t *start, unsigned long *len, int fb_num)
 	return 0;
 }
 EXPORT_SYMBOL(mdss_fb_get_phys_info);
+
+bool msm_fb_get_cont_splash(void)
+{
+	struct msm_fb_data_type *mfd = NULL;
+	/*Check primary panel cont splash state*/
+	mfd = (struct msm_fb_data_type *)fbi_list[0]->par;
+	if (mfd)
+		return mfd->panel_info->cont_splash_enabled;
+	return false;
+}
+EXPORT_SYMBOL(msm_fb_get_cont_splash);
 
 int __init mdss_fb_init(void)
 {

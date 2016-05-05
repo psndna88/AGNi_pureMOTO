@@ -1,4 +1,4 @@
-/* Copyright (c) 2007, 2012-2013 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2007, 2012-2014 The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
  *
  * This software is licensed under the terms of the GNU General Public
@@ -938,14 +938,19 @@ int config_ppp_scale(struct ppp_blit_op *blit_op, uint32_t *pppop_reg_ptr)
 		if ((dstW != src->roi.width) ||
 		    (dstH != src->roi.height) || mdp_blur) {
 
-				mdp_calc_scale_params(blit_op->src.roi.x,
-					blit_op->src.roi.width,
-					dstW, 1, &phase_init_x,
-					&phase_step_x);
-				mdp_calc_scale_params(blit_op->src.roi.y,
-					blit_op->src.roi.height,
-					dstH, 0, &phase_init_y,
-					&phase_step_y);
+			/*
+			 * Use source origin as 0 for computing initial
+			 * phase and step size. Incorrect initial phase and
+			 * step size value results in green line issue.
+			 */
+			mdp_calc_scale_params(0,
+				blit_op->src.roi.width,
+				dstW, 1, &phase_init_x,
+				&phase_step_x);
+			mdp_calc_scale_params(0,
+				blit_op->src.roi.height,
+				dstH, 0, &phase_init_y,
+				&phase_step_y);
 
 			PPP_WRITEL(phase_init_x, MDP3_PPP_SCALE_PHASEX_INIT);
 			PPP_WRITEL(phase_init_y, MDP3_PPP_SCALE_PHASEY_INIT);
@@ -953,7 +958,7 @@ int config_ppp_scale(struct ppp_blit_op *blit_op, uint32_t *pppop_reg_ptr)
 			PPP_WRITEL(phase_step_y, MDP3_PPP_SCALE_PHASEY_STEP);
 
 
-			if (dstW > src->roi.width || dstW > src->roi.height)
+			if (dstW > src->roi.width || dstH > src->roi.height)
 				ppp_load_up_lut();
 
 			if (mdp_blur)
