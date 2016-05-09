@@ -1185,7 +1185,7 @@
 
 &i2c_6 {
 	status = "okay";
-	qcom,clk-freq-out = <100000>;
+	qcom,clk-freq-out = <400000>;
 
 	ak09912: ak09912@0C {
 		compatible = "ak,ak09912";
@@ -1195,6 +1195,12 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&ak09912_reset_default &ak09912_irq_default>;
 		ak,layout = <6>;
+		axis_order_x = /bits/ 8 <0>;
+		axis_order_y = /bits/ 8 <1>;
+		axis_order_z = /bits/ 8 <2>;
+		axis_sign_x = /bits/ 8 <0>;
+		axis_sign_y = /bits/ 8 <0>;
+		axis_sign_z = /bits/ 8 <0>;
 	};
 };
 

@@ -699,6 +699,8 @@ config SENSORS_AK09912
          If you say yes here you get support for Asahi Kasei's
          orientation sensor AK09912.
 
+source "drivers/misc/ak0991x/Kconfig"
+
 config HAPTIC_DRV2605
 	tristate "TI DRV2605 haptic driver"
 	depends on I2C && SYSFS
