@@ -5,7 +5,7 @@ export KERNELDIR=`readlink -f .`
 export ARCH=arm
 if [ ! -f $KERNELDIR/.config ];
 then
-  make defconfig merlin_defconfig
+  make defconfig agni_merlin_defconfig
 fi
 . $KERNELDIR/.config
 mv .git .git-halt
