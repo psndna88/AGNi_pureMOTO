@@ -141,7 +141,12 @@ static inline int avc_audit(u32 ssid, u32 tsid,
 			      a, flags);
 }
 
+#ifdef CONFIG_SECURITY_SELINUX_FORCE_PERMISSIVE
+#define AVC_STRICT 0
+#else
 #define AVC_STRICT 1 /* Ignore permissive mode. */
+#endif
+
 #define AVC_OPERATION_CMD 2	/* ignore command when updating operations */
 int avc_has_perm_noaudit(u32 ssid, u32 tsid,
 			 u16 tclass, u32 requested,
