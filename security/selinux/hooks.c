@@ -428,7 +428,7 @@ static int sb_finish_set_opts(struct super_block *sb)
 	    !strcmp(sb->s_type->name, "rootfs") ||
 	    !strcmp(sb->s_type->name, "esdfs") ||
 	    !strcmp(sb->s_type->name, "f2fs") ||
-	    !strcmp(sb->s_type->name, "vfat") ||
+	    !strcmp(sb->s_type->name, "tmpfs") ||
 	    !strcmp(sb->s_type->name, "exfat"))
 		sbsec->flags |= SE_SBLABELSUPP;
 
