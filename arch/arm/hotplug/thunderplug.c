@@ -87,11 +87,13 @@ static inline void offline_cpus(void)
 {
 	unsigned int cpu;
 	switch(endurance_level) {
-		case 1:
+		case 1: /* QuadCore mode */
+#if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
 			if(suspend_cpu_num > 4)
 				suspend_cpu_num = 4;
 		break;
-		case 2:
+#endif
+		case 2: /* DualCore mode */
 			if(suspend_cpu_num > 2)
 				suspend_cpu_num = 2;
 		break;
@@ -109,20 +111,25 @@ static inline void cpus_online_all(void)
 {
 	unsigned int cpu;
 	switch(endurance_level) {
-	case 1:
+	case 1: /* QuadCore mode */
+#if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
 		if(resume_cpu_num > 3 || resume_cpu_num == 1)
 			resume_cpu_num = 3;
 	break;
-	case 2:
+#endif
+	case 2: /* DualCore mode */
 		if(resume_cpu_num > 1)
 			resume_cpu_num = 1;
 	break;
+	case 0: /* Default mode */
 #if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
-	case 0:
 		if(resume_cpu_num < 7)
 			resume_cpu_num = 7;
-	break;
+#else
+		if(resume_cpu_num < 3)
+			resume_cpu_num = 3;
 #endif
+	break;
 	default:
 	break;
 	}
@@ -387,26 +394,28 @@ static void __cpuinit tplug_work_fn(struct work_struct *work)
 
 	switch(endurance_level)
 	{
+	case 0: /* Default mode */
 #if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
-	case 0:
 		core_limit = 8;
-	break;
+#else
+		core_limit = 4;
 #endif
-	case 1:
+	break;
+	case 1: /* QuadCore mode */
+#if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
 		core_limit = 4;
 	break;
-	case 2:
+#endif
+	case 2: /* DualCore mode */
 		core_limit = 2;
 	break;
+	default:
 #if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
-	default:
 		core_limit = 8;
-	break;
 #else
-	default:
 		core_limit = 4;
-	break;
 #endif
+	break;
 	}
 
 	for(i = 0 ; i < core_limit; i++)

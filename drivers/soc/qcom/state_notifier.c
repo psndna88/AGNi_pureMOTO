@@ -128,4 +128,4 @@ subsys_initcall(state_notifier_init);
 
 MODULE_AUTHOR("Pranav Vashi <neobuddy89@gmail.com>");
 MODULE_DESCRIPTION("State Notifier Driver");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPLv2");

@@ -25,8 +25,13 @@
 #define DELAY_MSEC			100
 #define DEFAULT_MAX_CPUS_ONLINE		NR_CPUS
 #define DEFAULT_SUSP_CPUS		1
+#if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
+#define DEFAULT_MAX_CPUS_ECONOMIC	4
+#define DEFAULT_MAX_CPUS_CRITICAL	2
+#else
 #define DEFAULT_MAX_CPUS_ECONOMIC	2
 #define DEFAULT_MAX_CPUS_CRITICAL	1
+#endif
 #define DEFAULT_BATT_ECONOMIC		25
 #define DEFAULT_BATT_CRITICAL		15
 #define DEBUG_MASK			0
@@ -643,4 +648,4 @@ module_exit(state_helper_exit);
 
 MODULE_AUTHOR("Pranav Vashi <neobuddy89@gmail.com>");
 MODULE_DESCRIPTION("State Helper Driver");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPLv2");
