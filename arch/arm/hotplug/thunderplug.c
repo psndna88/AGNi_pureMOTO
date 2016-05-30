@@ -22,6 +22,7 @@
 #include <linux/cpu.h>
 #include <linux/lcd_notify.h>
 #include <linux/cpufreq.h>
+#include <linux/msm_bcl.h>
 
 #if defined(CONFIG_MMI_MERLIN_DTB) || defined(CONFIG_MMI_LUX_DTB)
 static int suspend_cpu_num = 2, resume_cpu_num = 7;
@@ -287,7 +288,9 @@ static ssize_t __ref thunderplug_hp_enabled_store(struct kobject *kobj, struct k
 	switch(val)
 	{
 		case 0:
+			bcl_hotplug_switch = 1;
 		case 1:
+			bcl_hotplug_switch = 0;
 			tplug_hp_enabled = val;
 		break;
 		default:
