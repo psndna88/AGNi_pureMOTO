@@ -602,7 +602,21 @@ static int __init thunderplug_init(void)
         return ret;
 }
 
+static void __exit thunderplug_exit(void)
+{
+	cancel_delayed_work(&tplug_work);
+	cancel_delayed_work(&tplug_resume_work);
+	cancel_delayed_work(&tplug_boost);
+	flush_workqueue(tplug_wq);
+	lcd_unregister_client(&lcd_worker);
+	pr_info("%s : unregistering input boost", THUNDERPLUG);
+	input_unregister_handler(&tplug_input_handler);
+	kobject_put(thunderplug_kobj);
+	sysfs_remove_group(thunderplug_kobj, &thunderplug_attr_group);
+}
+
 late_initcall(thunderplug_init);
+module_exit(thunderplug_exit);
 
 MODULE_LICENSE("GPL and additional rights");
 MODULE_AUTHOR("Varun Chitre <varun.chitre15@gmail.com>");

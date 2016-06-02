@@ -370,10 +370,21 @@ int __init cluster_plug_init(void)
 	return 0;
 }
 
+void __exit cluster_plug_exit(void)
+{
+	cancel_delayed_work(&cluster_plug_work);
+	flush_workqueue(clusterplug_wq);
+	destroy_workqueue(clusterplug_wq);
+	pr_info("cluster_plug: Removed version %d.%d by sultanqasim and crpalmer\n",
+		 CLUSTER_PLUG_MAJOR_VERSION,
+		 CLUSTER_PLUG_MINOR_VERSION);
+}
+
+late_initcall(cluster_plug_init);
+module_exit(cluster_plug_exit);
+
 MODULE_AUTHOR("Sultan Qasim Khan <sultanqasim@gmail.com> and Christopher R. Palmer <crpalmer@gmail.com>");
 MODULE_DESCRIPTION("'cluster_plug' - A cluster based hotplug for homogeneous"
         "ARM big.LITTLE systems where the big cluster is preferred."
 );
 MODULE_LICENSE("GPL");
-
-late_initcall(cluster_plug_init);
