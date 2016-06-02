@@ -86,6 +86,15 @@ Description:
 		ones are sent by filesystem mounted with discard option,
 		whenever some data blocks are getting discarded.
 
+What:		/sys/block/zram<id>/discard
+Date:		August 2010
+Contact:	Nitin Gupta <ngupta@vflare.org>
+Description:
+		The discard file is read-only and specifies the number of
+		discard requests received by this device. These requests
+		provide information to block device regarding blocks which are
+		no longer used by filesystem.
+
 What:		/sys/block/zram<id>/zero_pages
 Date:		August 2010
 Contact:	Nitin Gupta <ngupta@vflare.org>
