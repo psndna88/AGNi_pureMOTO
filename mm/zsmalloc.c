@@ -276,7 +276,7 @@ struct zs_pool {
  * so that USE_PGTABLE_MAPPING is defined. This causes zsmalloc to use
  * page table mapping rather than copying for object mapping.
  */
-#if defined(CONFIG_ARM) && !defined(MODULE)
+#if defined(CONFIG_ARM) && !defined(MODULE) && !defined(CONFIG_PGTABLE_MAPPING)
 #define CONFIG_PGTABLE_MAPPING
 #endif
 
