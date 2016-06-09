@@ -65,6 +65,7 @@
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 
+int vib_method = 1;
 /* Address of our device */
 #define DEVICE_ADDR 0x5A
 
@@ -323,6 +324,26 @@ static ssize_t drv260x_vib_level_default_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", DEF_VIBE_STRENGTH);
 }
 
+static ssize_t drv260x_vib_method_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", vib_method);
+}
+
+static ssize_t drv260x_vib_method_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val;
+	sscanf(buf, "%d", &val);
+
+	if ((val == 0) || (val == 1))
+		vib_method = val; /* 0:Stock 1:CM */
+
+	return strnlen(buf, count);
+}
+
 static ssize_t drv260x_vib_level_show(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
@@ -361,12 +382,14 @@ static ssize_t drv260x_vib_level_store(struct device *dev,
 
 static DEVICE_ATTR(vtg_min, S_IRUGO, drv260x_vib_min_show, NULL);
 static DEVICE_ATTR(vtg_max, S_IRUGO, drv260x_vib_max_show, NULL);
+static DEVICE_ATTR(vtg_method, S_IRUGO | S_IWUSR, drv260x_vib_method_show, drv260x_vib_method_store);
 static DEVICE_ATTR(vtg_level_default, S_IRUGO, drv260x_vib_level_default_show, NULL);
 static DEVICE_ATTR(vtg_level, S_IRUGO | S_IWUSR, drv260x_vib_level_show, drv260x_vib_level_store);
 
 static struct attribute *timed_dev_attrs[] = {
 	&dev_attr_vtg_min.attr,
 	&dev_attr_vtg_max.attr,
+	&dev_attr_vtg_method.attr,
 	&dev_attr_vtg_level_default.attr,
 	&dev_attr_vtg_level.attr,
 	NULL,
@@ -669,7 +692,11 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 		if (mode != MODE_REAL_TIME_PLAYBACK) {
 			if (audio_haptics_enabled && mode == MODE_AUDIOHAPTIC)
 				setAudioHapticsEnabled(NO);
+			if (vib_method == 0) {
+			drv260x_set_rtp_val(REAL_TIME_PLAYBACK_STRENGTH);
+			} else {
 			drv260x_set_rtp_val(vibe_strength);
+			}
 			drv260x_change_mode(MODE_REAL_TIME_PLAYBACK);
 			vibrator_is_playing = YES;
 		}
@@ -1157,8 +1184,13 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 					if (audio_haptics_enabled
 					    && mode == MODE_AUDIOHAPTIC)
 						setAudioHapticsEnabled(NO);
+					if (vib_method == 0) 
+					drv260x_set_rtp_val
+					    (REAL_TIME_PLAYBACK_STRENGTH);
+					} else {
 					drv260x_set_rtp_val
 					    (vibe_strength);
+					}
 					drv260x_change_mode
 					    (MODE_REAL_TIME_PLAYBACK);
 					vibrator_is_playing = YES;
