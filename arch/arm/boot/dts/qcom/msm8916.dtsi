@@ -867,6 +867,7 @@
 		interrupts = <0 29 1>;
 		qcom,rx-ring-size = <32>;
 		qcom,max-rx-mtu = <4096>;
+		qcom,fast-shutdown;
 	};
 
 	qcom_tzlog: tz-log@8600720 {
@@ -1633,6 +1634,12 @@
 			qcom,levels = <533330 800000 998400>;
 			qcom,freq-req;
 		};
+	};
+
+	qcom,msm-thermal-simple {
+		compatible = "qcom,msm-thermal-simple";
+		qcom,thermal-vadc = <&pm8916_vadc>;
+		qcom,adc-channel = <178>;
 	};
 
 	qcom,memshare {
