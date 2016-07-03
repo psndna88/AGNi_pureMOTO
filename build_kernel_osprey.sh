@@ -2,7 +2,7 @@
 export KERNELDIR=`readlink -f .`
 . ~/AGNi_stamp_MOTO.sh
 #. ~/gcc-6.0-uber_arm-eabi.sh
-. ~/gcc-7.0-uber_arm-eabi.sh
+. ~/gcc-6.x-uber_arm-eabi.sh
 export ARCH=arm
 if [ ! -f $KERNELDIR/.config ];
 then
