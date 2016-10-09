@@ -11,9 +11,7 @@ fi
 . $KERNELDIR/.config
 mv .git .git-halt
 echo "Clearing DTB files ..."
-cd $KERNELDIR/arch/arm/boot/dts/
-rm msm8939-merlin-p0.dtb msm8939-merlin-p1.dtb msm8939-merlin-p1v3.dtb
-rm msm8916-osprey-p2b.dtb msm8916-osprey-p2bd.dtb
+rm $KERNELDIR/arch/arm/boot/dts/*.dtb
 echo "Cross-compiling kernel ..."
 cd $KERNELDIR/
 make -j3 || exit 1
