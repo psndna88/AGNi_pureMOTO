@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,8 +45,8 @@
 #define MSM_IOMMU_ATTR_CACHED_WB_NWA	0x2
 #define MSM_IOMMU_ATTR_CACHED_WT	0x3
 
-static int msm_iommu_unmap_range(struct iommu_domain *domain, unsigned int va,
-				 unsigned int len);
+static int msm_iommu_unmap_range(struct iommu_domain *domain, unsigned long va,
+				 size_t len);
 
 static inline void clean_pte(u32 *start, u32 *end,
 			     int redirect)
@@ -424,7 +424,13 @@ static void __program_context(struct msm_iommu_drvdata *iommu_drvdata,
 	msm_iommu_remote_spin_unlock(iommu_drvdata->needs_rem_spinlock);
 }
 
-static int msm_iommu_domain_init(struct iommu_domain *domain, int flags)
+#ifdef CONFIG_IOMMU_PGTABLES_L2
+#define INITIAL_REDIRECT_VAL 1
+#else
+#define INITIAL_REDIRECT_VAL 0
+#endif
+
+static int msm_iommu_domain_init(struct iommu_domain *domain)
 {
 	struct msm_iommu_priv *priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 
@@ -438,9 +444,7 @@ static int msm_iommu_domain_init(struct iommu_domain *domain, int flags)
 	if (!priv->pt.fl_table)
 		goto fail_nomem;
 
-#ifdef CONFIG_IOMMU_PGTABLES_L2
-	priv->pt.redirect = flags & MSM_IOMMU_DOMAIN_PT_CACHEABLE;
-#endif
+	priv->pt.redirect = INITIAL_REDIRECT_VAL;
 
 	memset(priv->pt.fl_table, 0, SZ_16K);
 	domain->priv = priv;
@@ -1000,8 +1004,8 @@ static int check_range(u32 *fl_table, unsigned int va,
 	return 0;
 }
 
-static int msm_iommu_map_range(struct iommu_domain *domain, unsigned int va,
-			       struct scatterlist *sg, unsigned int len,
+static int msm_iommu_map_range(struct iommu_domain *domain, unsigned long va,
+			       struct scatterlist *sg, size_t len,
 			       int prot)
 {
 	unsigned int pa;
@@ -1150,8 +1154,8 @@ fail:
 }
 
 
-static int msm_iommu_unmap_range(struct iommu_domain *domain, unsigned int va,
-				 unsigned int len)
+static int msm_iommu_unmap_range(struct iommu_domain *domain, unsigned long va,
+				 size_t len)
 {
 	unsigned int offset = 0;
 	u32 *fl_table;
@@ -1381,6 +1385,66 @@ static phys_addr_t msm_iommu_get_pt_base_addr(struct iommu_domain *domain)
 	return __pa(priv->pt.fl_table);
 }
 
+#ifdef CONFIG_IOMMU_PGTABLES_L2
+static void __do_set_redirect(struct iommu_domain *domain, void *data)
+{
+	struct msm_iommu_priv *priv;
+	int *no_redirect = data;
+
+	mutex_lock(&msm_iommu_lock);
+	priv = domain->priv;
+	priv->pt.redirect = !(*no_redirect);
+	mutex_unlock(&msm_iommu_lock);
+}
+
+static void __do_get_redirect(struct iommu_domain *domain, void *data)
+{
+	struct msm_iommu_priv *priv;
+	int *no_redirect = data;
+
+	mutex_lock(&msm_iommu_lock);
+	priv = domain->priv;
+	*no_redirect = !priv->pt.redirect;
+	mutex_unlock(&msm_iommu_lock);
+}
+
+#else
+
+static void __do_set_redirect(struct iommu_domain *domain, void *data)
+{
+}
+
+static void __do_get_redirect(struct iommu_domain *domain, void *data)
+{
+}
+#endif
+
+static int msm_iommu_domain_set_attr(struct iommu_domain *domain,
+				enum iommu_attr attr, void *data)
+{
+	switch (attr) {
+	case DOMAIN_ATTR_COHERENT_HTW_DISABLE:
+		__do_set_redirect(domain, data);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int msm_iommu_domain_get_attr(struct iommu_domain *domain,
+				enum iommu_attr attr, void *data)
+{
+	switch (attr) {
+	case DOMAIN_ATTR_COHERENT_HTW_DISABLE:
+		__do_get_redirect(domain, data);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static struct iommu_ops msm_iommu_ops = {
 	.domain_init = msm_iommu_domain_init,
 	.domain_destroy = msm_iommu_domain_destroy,
@@ -1394,6 +1458,8 @@ static struct iommu_ops msm_iommu_ops = {
 	.domain_has_cap = msm_iommu_domain_has_cap,
 	.get_pt_base_addr = msm_iommu_get_pt_base_addr,
 	.pgsize_bitmap = MSM_IOMMU_PGSIZES,
+	.domain_set_attr = msm_iommu_domain_set_attr,
+	.domain_get_attr = msm_iommu_domain_get_attr,
 };
 
 static int __init get_tex_class(int icp, int ocp, int mt, int nos)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -195,7 +195,7 @@ static int msm_iommu_map_iommu(struct msm_iommu_meta *meta,
 	unsigned long extra, size;
 	struct sg_table *table;
 	int prot = IOMMU_WRITE | IOMMU_READ;
-
+	size_t map_ret;
 
 	size = meta->size;
 	data->mapped_size = iova_length;
@@ -224,13 +224,16 @@ static int msm_iommu_map_iommu(struct msm_iommu_meta *meta,
 		goto out1;
 	}
 
-	ret = iommu_map_range(domain, data->iova_addr,
+	map_ret = iommu_map_sg(domain, data->iova_addr,
 			      table->sgl,
-			      size, prot);
-	if (ret) {
+			      table->nents, prot);
+	if (map_ret != size) {
 		pr_err("%s: could not map %lx in domain %p\n",
 			__func__, data->iova_addr, domain);
+		ret = -EINVAL;
 		goto out1;
+	} else {
+		ret = 0;
 	}
 
 	if (extra) {
@@ -428,6 +431,7 @@ static int __msm_map_iommu_common(
 
 	if (!iommu_meta) {
 		iommu_meta = msm_iommu_meta_create(dma_buf, table, size);
+
 		if (IS_ERR(iommu_meta)) {
 			mutex_unlock(&msm_iommu_map_mutex);
 			ret = PTR_ERR(iommu_meta);
@@ -483,8 +487,9 @@ static int __msm_map_iommu_common(
 
 out_unlock:
 	mutex_unlock(&iommu_meta->lock);
-	msm_iommu_meta_put(iommu_meta);
 out:
+	if (!IS_ERR(iommu_meta))
+		msm_iommu_meta_put(iommu_meta);
 	return ret;
 
 }
